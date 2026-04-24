@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cricket Pro – Live Scorecard</title>
+  <meta name="description" content="Live cricket scorecard with real-time stats, partnership tracker, and ball-by-ball timeline.">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- TOP NAV -->
+  <nav class="top-nav">
+    <div class="nav-brand">
+      <span>🏏</span> CricketPro
+      <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+    </div>
+    <div class="nav-user">
+      <span>{{ username }}</span>
+      <a href="/logout">Logout</a>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <div class="crex-wrap">
+
+    <!-- ① MATCH HEADER CARD (Always Visible) -->
+    <div class="match-header">
+      <div class="match-teams-bar">
+        <span class="team-name" id="team1-label">Team Alpha</span>
+        <span class="vs">VS</span>
+        <span class="team-name" id="team2-label">Team Beta</span>
+      </div>
+      <div class="score-block">
+        <div class="score-main" id="score">0/0</div>
+        <div class="score-overs" id="overs-text">0.0 Overs</div>
+        <!-- Overs Progress Bar -->
+        <div style="width:100%; margin-top:10px; padding:0 20px;">
+          <div style="background:rgba(255,255,255,0.08); border-radius:20px; height:6px; overflow:hidden;">
+            <div id="overs-bar" style="height:100%; background:var(--primary); border-radius:20px; width:0%; transition:width .4s ease;"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-top:4px;">
+            <span style="font-size:.6rem; color:var(--muted);" id="overs-done">0.0 ov</span>
+            <span style="font-size:.6rem; color:var(--muted);" id="overs-limit-label">20.0 ov</span>
+          </div>
+        </div>
+      </div>
+      <div class="score-meta">
+        <div class="meta-item">
+          <span class="meta-val" id="crr">0.00</span>
+          <span class="meta-lbl">CRR</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-val" id="projected-score">0</span>
+          <span class="meta-lbl">Projected</span>
+        </div>
+        <div class="meta-item" id="target-box" style="display:none;">
+          <span class="meta-val" id="target-score">—</span>
+          <span class="meta-lbl">Target</span>
+        </div>
+        <div class="meta-item" id="rrr-box" style="display:none;">
+          <span class="meta-val" id="rrr">—</span>
+          <span class="meta-lbl">RRR</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-val" id="partnership-runs">0(0)</span>
+          <span class="meta-lbl">Partnership</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-val" id="last-wkt">—</span>
+          <span class="meta-lbl">Last Wkt</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB NAVIGATION -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="showTab('live')">📺 Live</button>
+      <button class="tab-btn" onclick="showTab('graphs')">📊 Graphs</button>
+      <button class="tab-btn" onclick="showTab('setup')">⚙️ Setup</button>
+    </div>
+
+    <!-- TAB PANELS -->
+    <div id="tab-live" class="tab-panel active">
+      <!-- INNINGS COMPLETE BANNER -->
+      <div id="innings-banner" style="display:none; background:linear-gradient(135deg,rgba(232,184,75,.2),rgba(232,184,75,.05)); border:1px solid var(--primary); border-radius:12px; padding:16px 20px; text-align:center; margin-bottom:14px;">
+        <div style="font-size:1.4rem;">🏏</div>
+        <div style="font-weight:800; color:var(--primary); font-size:1rem; margin:4px 0;">Innings Complete!</div>
+        <div id="innings-summary" style="color:var(--muted); font-size:.8rem;"></div>
+        <div id="match-result-display" style="font-weight:800; color:var(--primary); font-size:1.2rem; margin:10px 0; display:none;"></div>
+        <button id="btn-start-2nd" class="btn switch" style="margin-top:10px; padding:8px 20px; display:none;" onclick="startSecondInnings()">▶ Start 2nd Innings</button>
+        <button class="btn reset" style="margin-top:10px; padding:8px 20px; font-family:Inter,sans-serif;" onclick="resetMatch()">↺ New Match</button>
+      </div>
+
+    <!-- ② BATTERS CARD -->
+    <div class="card" id="batters-card">
+      <div class="card-header">
+        Batters
+        <span class="card-header-tag">At The Crease</span>
+      </div>
+
+      <div class="batter-row striker" id="b1-row">
+        <div>
+          <div class="batter-name" id="b1-name">Player 1</div>
+          <div class="batter-tag" id="b1-role">Striker ▶</div>
+        </div>
+        <div class="batter-stat">
+          <span class="val" id="b1-runs">0</span>
+          <span class="lbl">Runs</span>
+        </div>
+        <div class="batter-stat">
+          <span class="val" id="b1-balls">0</span>
+          <span class="lbl">Balls</span>
+        </div>
+        <div class="sr-badge" id="b1-sr">0.0</div>
+      </div>
+
+      <div class="batter-row" id="b2-row">
+        <div>
+          <div class="batter-name" id="b2-name">Player 2</div>
+          <div class="batter-tag" id="b2-role">Non-Striker</div>
+        </div>
+        <div class="batter-stat">
+          <span class="val" id="b2-runs">0</span>
+          <span class="lbl">Runs</span>
+        </div>
+        <div class="batter-stat">
+          <span class="val" id="b2-balls">0</span>
+          <span class="lbl">Balls</span>
+        </div>
+        <div class="sr-badge" id="b2-sr">0.0</div>
+      </div>
+    </div>
+
+      <!-- ③ BALL TICKER -->
+      <div class="ticker-card">
+        <div class="card-header">
+          Recent Balls
+          <span class="card-header-tag">Last 12</span>
+        </div>
+        <div class="ticker-scroll" id="ticker">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+
+      <!-- ④ BOUNDARY STATS (New Feature) -->
+      <div class="card" style="padding:16px; display:flex; justify-content:space-around; align-items:center;">
+        <div style="text-align:center;">
+          <div style="font-size:1.2rem; font-weight:800; color:var(--green);" id="count-4s">0</div>
+          <div style="font-size:.6rem; color:var(--muted); text-transform:uppercase;">Fours (4s)</div>
+        </div>
+        <div style="width:1px; height:24px; background:var(--border);"></div>
+        <div style="text-align:center;">
+          <div style="font-size:1.2rem; font-weight:800; color:var(--purple);" id="count-6s">0</div>
+          <div style="font-size:.6rem; color:var(--muted); text-transform:uppercase;">Sixes (6s)</div>
+        </div>
+        <div style="width:1px; height:24px; background:var(--border);"></div>
+        <div style="text-align:center;">
+          <div style="font-size:1.2rem; font-weight:800; color:var(--text);" id="count-dots">0</div>
+          <div style="font-size:.6rem; color:var(--muted); text-transform:uppercase;">Dots (0s)</div>
+        </div>
+      </div>
+
+      <!-- ⑤ SCORING CONTROLS -->
+      <div class="controls-card">
+        <div class="card-header" style="padding:0 0 12px; border:none;">
+          Score Entry
+        </div>
+        <div class="controls-grid">
+          <button class="btn run-0" onclick="addRun(0)">0</button>
+          <button class="btn run-1" onclick="addRun(1)">1</button>
+          <button class="btn run-2" onclick="addRun(2)">2</button>
+          <button class="btn run-3" onclick="addRun(3)">3</button>
+          <button class="btn run-4" onclick="addRun(4)">4</button>
+          <button class="btn run-6" onclick="addRun(6)">6</button>
+          <button class="btn wide" onclick="addExtra('wide')">WD</button>
+          <button class="btn wide" onclick="addExtra('noball')">NB</button>
+          <button class="btn wicket" onclick="addWicket()">WKT 🔴</button>
+          <button class="btn switch" onclick="switchStriker()">⇄ Swap</button>
+          <button class="btn wide save" onclick="saveMatch()">💾 Save Match</button>
+          <button class="btn wide hist"  onclick="loadHistory()">📋 Match History</button>
+        </div>
+      </div>
+    </div><!-- /tab-live -->
+
+    <div id="tab-graphs" class="tab-panel">
+      <!-- ⑥ RUN RATE PROGRESSION -->
+      <div class="chart-card">
+        <div class="card-header" style="padding:0 0 12px; border:none;">
+          Run Progression
+          <span class="card-header-tag">Cumulative</span>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chart"></canvas>
+        </div>
+      </div>
+
+      <!-- ⑦ OVER-BY-OVER BAR CHART (New Feature) -->
+      <div class="chart-card" style="margin-top:14px;">
+        <div class="card-header" style="padding:0 0 12px; border:none;">
+          Runs Per Over
+          <span class="card-header-tag">Bar View</span>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="bar-chart"></canvas>
+        </div>
+      </div>
+    </div><!-- /tab-graphs -->
+
+    <div id="tab-setup" class="tab-panel">
+      <!-- ⑧ TOSS / TEAM SETUP -->
+      <div class="toss-card">
+        <div class="card-header" style="padding:0 0 8px; border:none; font-size:.7rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.5px;">
+          Match Setup & Toss
+        </div>
+        <div class="toss-inputs">
+          <input id="team1-in" class="toss-input" placeholder="Team Alpha" maxlength="20">
+          <span class="vs-sep">VS</span>
+          <input id="team2-in" class="toss-input" placeholder="Team Beta" maxlength="20">
+          <button class="btn switch" onclick="doToss()" style="white-space:nowrap;padding:10px 16px;">Toss</button>
+        </div>
+        <div class="toss-result" id="toss-result"></div>
+
+        <!-- Overs Selection -->
+        <div style="margin-top:12px;">
+          <div style="font-size:.65rem; color:var(--muted); font-weight:700; text-transform:uppercase; margin-bottom:8px;">Innings Overs</div>
+          <div class="overs-selector">
+            <button class="over-opt" onclick="setOvers(3)" data-val="3">3</button>
+            <button class="over-opt" onclick="setOvers(4)" data-val="4">4</button>
+            <button class="over-opt" onclick="setOvers(5)" data-val="5">5</button>
+            <button class="over-opt" onclick="setOvers(10)" data-val="10">10</button>
+            <button class="over-opt" onclick="setOvers(15)" data-val="15">15</button>
+            <button class="over-opt active" onclick="setOvers(20)" data-val="20">20</button>
+            <button class="over-opt" onclick="setOvers(50)" data-val="50">50</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑨ BATTING LINEUP -->
+      <div class="toss-card" id="lineup-card" style="margin-top:14px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;" onclick="toggleLineup()">
+          <div class="card-header" style="padding:0; border:none; font-size:.7rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.5px;">
+            🏏 Batting Lineup
+          </div>
+          <span id="lineup-toggle-icon" style="color:var(--muted); font-size:.75rem;">▼ Show</span>
+        </div>
+
+        <div id="lineup-body" style="display:none; margin-top:12px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;" id="player-inputs">
+            <!-- 11 inputs rendered by JS -->
+          </div>
+          <button class="btn switch" style="width:100%; padding:12px;" onclick="setLineup()">✅ Set Lineup</button>
+          <div id="lineup-status" style="font-size:.75rem; color:var(--green); margin-top:8px; min-height:1rem;"></div>
+        </div>
+      </div>
+
+      <button class="btn reset wide" style="width:100%; margin-top:14px; background:var(--red-dim); border-color:var(--red); color:var(--red);" onclick="resetMatch()">↺ Full Match Reset</button>
+    </div><!-- /tab-setup -->
+
+    <!-- ⑩ HISTORY -->
+    <div class="card" id="history-wrap" style="display:none; padding:16px; margin-top:14px;">
+      <div class="card-header" style="padding:0 0 12px; border:none;">Match History</div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+
+  </div><!-- /crex-wrap -->
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
