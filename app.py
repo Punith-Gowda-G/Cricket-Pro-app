@@ -328,7 +328,7 @@ def init_db():
 
     conn.commit()
     conn.close()
-
+init_db()
 @app.route("/save", methods=["POST"])
 @login_required
 def save_match():
@@ -348,13 +348,12 @@ def save_match():
 @app.route("/history")
 @login_required
 def history():
-    conn = sqlite3.connect("matches.db")
+    conn = sqlite3.connect("matches.db")        
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM matches ORDER BY id DESC")
     data = cursor.fetchall()
     conn.close()
     return jsonify(data)
-init_db()
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)
