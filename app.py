@@ -5,7 +5,6 @@ from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = "cricket_secret_key_123" # In production, use a strong random key
-init_db()
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
